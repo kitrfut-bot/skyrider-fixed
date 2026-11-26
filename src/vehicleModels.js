@@ -3,6 +3,7 @@ import { bakeGeometry, mergeBaked } from './geo.js'
 import { BIKE } from './constants.js'
 import { BikeModel } from './bikeModel.js'
 import { getVehicle } from './vehicles.js'
+import { getRider } from './riders.js'
 
 const V3 = THREE.Vector3
 const UP = new V3(0, 1, 0)
@@ -92,7 +93,7 @@ class PosedModel {
 
 /** Flying car: drives on four wheels, folds them into hover pads and opens wings in the air. */
 export class CarModel extends PosedModel {
-  constructor(palette = null) {
+  constructor(palette = null, rider = null) {
     super()
     const paint = palette ? palette.frame : C.paint
     const helmet = palette ? palette.helmet : C.helmet
@@ -141,12 +142,12 @@ export class CarModel extends PosedModel {
     glass.renderOrder = 2
 
     // driver
-    const skin = new THREE.MeshLambertMaterial({ color: C.skin })
+    const skin = new THREE.MeshLambertMaterial({ color: rider?.skin || C.skin })
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skin)
     head.position.set(0.2, 0.78, -0.22)
-    const hel = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: helmet }))
+    const hel = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: rider?.hair || helmet }))
     hel.position.set(0.2, 0.8, -0.23)
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.18, 3, 8), new THREE.MeshLambertMaterial({ color: C.dark }))
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.18, 3, 8), new THREE.MeshLambertMaterial({ color: rider?.jersey || C.dark }))
     torso.position.set(0.2, 0.58, -0.28)
     this.tilt.add(head, hel, torso)
     this.tilt.add(glass)
@@ -267,7 +268,7 @@ export class CarModel extends PosedModel {
 
 /** Helicopter with a spinning main and tail rotor, skids and a pilot in a glass bubble. */
 export class HeliModel extends PosedModel {
-  constructor(palette = null) {
+  constructor(palette = null, rider = null) {
     super()
     const paint = palette ? palette.frame : C.paint
     const helmet = palette ? palette.helmet : C.helmet
@@ -311,10 +312,10 @@ export class HeliModel extends PosedModel {
     bubble.position.set(0, 0.98, 0.32)
     bubble.renderOrder = 2
 
-    const skin = new THREE.MeshLambertMaterial({ color: C.skin })
+    const skin = new THREE.MeshLambertMaterial({ color: rider?.skin || C.skin })
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skin)
     head.position.set(0, 1.18, 0.35)
-    const hel = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: helmet }))
+    const hel = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: rider?.hair || helmet }))
     hel.position.set(0, 1.2, 0.34)
     this.tilt.add(head, hel, bubble)
 
@@ -377,11 +378,12 @@ export class HeliModel extends PosedModel {
 }
 
 /** Builds the right 3D model for a garage vehicle. */
-export function createVehicleModel(id, palette = null) {
+export function createVehicleModel(id, palette = null, riderId = 'classic') {
+  const rider = getRider(riderId)
   const spec = getVehicle(id)
-  if (spec.kind === 'car') return new CarModel(palette)
-  if (spec.kind === 'heli') return new HeliModel(palette)
-  return new BikeModel(palette, spec.id)
+  if (spec.kind === 'car') return new CarModel(palette, rider)
+  if (spec.kind === 'heli') return new HeliModel(palette, rider)
+  return new BikeModel(palette, spec.id, rider)
 }
 
 /** Label height and blob-shadow size per vehicle kind. */

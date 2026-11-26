@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id)
  * The game itself (main.js) only gets small callbacks: beginRace, raceEnded, toLobby, toMenu, setPalette, toast.
  */
 export class Multiplayer {
-  constructor({ scene, screens, showScreen, courseLength, cb, getSelectedVehicle }) {
+  constructor({ scene, screens, showScreen, courseLength, cb, getSelectedVehicle, getSelectedRider }) {
     this.net = new Net()
     this.remotes = new Remotes(scene)
     this.screens = screens
@@ -20,6 +20,7 @@ export class Multiplayer {
     this.courseLength = courseLength
     this.cb = cb
     this.getSelectedVehicle = getSelectedVehicle || (() => 'road')
+    this.getSelectedRider = getSelectedRider || (() => 'classic')
     this.sendAcc = 0
     this.busy = false
     this.view = 'join' // the lobby side of the main menu: 'join' (create or join) or 'room'
@@ -170,7 +171,7 @@ export class Multiplayer {
     this.cb.userGesture()
     this.setBusy(true, 'Creating room...')
     try {
-      await this.net.createRoom(this.playerName(), this.getSelectedVehicle())
+      await this.net.createRoom(this.playerName(), this.getSelectedVehicle(), this.getSelectedRider())
       this.enterLobby()
     } catch (e) {
       this.setStatus(describeError(e), true)
@@ -189,7 +190,7 @@ export class Multiplayer {
     }
     this.setBusy(true, 'Joining room...')
     try {
-      await this.net.joinRoom(code, this.playerName(), this.getSelectedVehicle())
+      await this.net.joinRoom(code, this.playerName(), this.getSelectedVehicle(), this.getSelectedRider())
       this.enterLobby()
     } catch (e) {
       this.setStatus(describeError(e), true)
@@ -239,6 +240,13 @@ export class Multiplayer {
   vehicleChanged(id) {
     if (!this.net.active || this.net.phase !== 'lobby') return
     this.net.setVehicle(id)
+    this.remotes.sync(this.net.players, this.net.pid)
+    this.renderLobby()
+  }
+
+  riderChanged(id) {
+    if (!this.net.active || this.net.phase !== 'lobby') return
+    this.net.setRider(id)
     this.remotes.sync(this.net.players, this.net.pid)
     this.renderLobby()
   }

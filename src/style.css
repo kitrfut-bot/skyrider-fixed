@@ -1482,3 +1482,10 @@ input {
 .hud-top .stat-group-left {
   align-items: flex-start;
 }
+
+.rider-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.rider-tile { cursor: pointer; border: 2px solid #ccd9e6; border-radius: 12px; background: #fff; color: #173958; padding: 5px 8px; display: flex; align-items: center; gap: 7px; font: inherit; font-weight: 600; }
+.rider-tile img { width: 35px; height: 48px; object-fit: contain; }
+.rider-tile.on { border-color: #1581d0; background: #e4f4ff; }
+.rider-tile:focus-visible { outline: 3px solid #ffb000; outline-offset: 2px; }
+.panel-garage { overflow-y: auto; }
