@@ -8,6 +8,7 @@
  * Room code = the last part of the host's PeerJS id, so joining needs no server of our own.
  */
 
+import { cleanRider } from './riders.js'
 import { cleanVehicle } from './vehicles.js'
 
 export const MP = {
@@ -133,6 +134,7 @@ export class Net {
     this._joinReject = null
     this.chatAt = new Map() // host only: pid -> last chat time (flood guard)
     this.vehicle = 'road'
+    this.rider = 'classic'
   }
 
   // ---------- room setup ----------
@@ -186,9 +188,10 @@ export class Net {
     }, 1500)
   }
 
-  async createRoom(name, vehicle) {
+  async createRoom(name, vehicle, rider) {
     this.leaveSilently()
     this.vehicle = cleanVehicle(vehicle)
+    this.rider = cleanRider(rider)
     const Peer = await loadPeer()
     let code = ''
     let lastErr = null
@@ -207,18 +210,19 @@ export class Net {
     this.active = true
     this.pid = 0
     this.code = code
-    this.players = [{ pid: 0, name: cleanName(name), veh: this.vehicle, ready: true }]
+    this.players = [{ pid: 0, name: cleanName(name), veh: this.vehicle, rider: this.rider, ready: true }]
     this.phase = 'lobby'
     this.peer.on('connection', (conn) => this.hostAccept(conn))
     this.startTimers()
     return code
   }
 
-  async joinRoom(rawCode, name, vehicle) {
+  async joinRoom(rawCode, name, vehicle, rider) {
     const code = cleanCode(rawCode)
     if (code.length < 5) throw { type: 'bad-code' }
     this.leaveSilently()
     this.vehicle = cleanVehicle(vehicle)
+    this.rider = cleanRider(rider)
     try {
       const Peer = await loadPeer()
       await this.openPeer(Peer, null)
@@ -236,7 +240,7 @@ export class Net {
         }
         const t = setTimeout(() => finish(reject, { type: 'timeout' }), 15000)
         this._joinReject = (err) => finish(reject, err)
-        conn.on('open', () => safeSend(conn, { t: 'hi', name: cleanName(name), v: MP.PROTO, veh: this.vehicle }))
+        conn.on('open', () => safeSend(conn, { t: 'hi', name: cleanName(name), v: MP.PROTO, veh: this.vehicle, rider: this.rider }))
         conn.on('data', (msg) => {
           if (!joined) {
             if (msg && msg.t === 'welcome') {
@@ -278,7 +282,7 @@ export class Net {
         if (this.players.length >= MP.MAX_PLAYERS) return this.deny(conn, 'full')
         pid = this.freePid()
         const name = this.uniqueName(cleanName(msg.name))
-        this.players.push({ pid, name, veh: cleanVehicle(msg.veh), ready: false })
+        this.players.push({ pid, name, veh: cleanVehicle(msg.veh), rider: cleanRider(msg.rider), ready: false })
         this.conns.set(pid, conn)
         this.seen.set(pid, performance.now())
         safeSend(conn, { t: 'welcome', pid, players: this.players, phase: this.phase })
@@ -329,6 +333,9 @@ export class Net {
         break
       case 'veh':
         if (this.phase === 'lobby') this.updatePlayer(pid, { veh: cleanVehicle(msg.v), ready: false })
+        break
+      case 'rider':
+        if (this.phase === 'lobby') this.updatePlayer(pid, { rider: cleanRider(msg.r), ready: false })
         break
       case 'ready':
         if (this.phase === 'lobby') this.updatePlayer(pid, { ready: !!msg.on })
@@ -546,6 +553,17 @@ export class Net {
         me.ready = false
       }
       safeSend(this.hostConn, { t: 'veh', v: this.vehicle })
+    }
+  }
+
+  setRider(id) {
+    this.rider = cleanRider(id)
+    if (!this.active || this.phase !== 'lobby') return
+    if (this.isHost) this.updatePlayer(0, { rider: this.rider })
+    else {
+      const me = this.me
+      if (me) { me.rider = this.rider; me.ready = false }
+      safeSend(this.hostConn, { t: 'rider', r: this.rider })
     }
   }
 

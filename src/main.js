@@ -1,3 +1,4 @@
+import { cleanRider } from './riders.js'
 import '@fontsource/fredoka/latin-500.css'
 import '@fontsource/fredoka/latin-600.css'
 import '@fontsource/fredoka/latin-700.css'
@@ -53,6 +54,7 @@ syncSpriteLighting(scene) // sprites shade themselves with the scene's real sun 
 for (const [name, list] of Object.entries(course.sprites)) {
   if (list.length) scene.add(new BillboardSet(name, list, { mode: 'cyl', anchor: 'bottom', fade: true }).mesh)
 }
+let riderId = cleanRider(safeGet('skyrider-rider'))
 let vehicleId = cleanVehicle(safeGet(STORAGE.VEHICLE))
 let paintIndex = Math.max(0, Math.min(PAINTS.length - 1, Number(safeGet(STORAGE.PAINT)) || 0))
 let roomPid = null
@@ -64,13 +66,13 @@ const readBest = (id) => Number(safeGet(bestKey(id))) || 0
 const bike = new VehicleController(world, bikeMat)
 bike.setVehicle(vehicleId)
 bike.ceiling = course.maxY + 50
-let model = createVehicleModel(vehicleId, currentPalette())
+let model = createVehicleModel(vehicleId, currentPalette(), riderId)
 scene.add(model.root)
 
 function replaceModel() {
   scene.remove(model.root)
   disposeObject(model.root)
-  model = createVehicleModel(vehicleId, currentPalette())
+  model = createVehicleModel(vehicleId, currentPalette(), riderId)
   scene.add(model.root)
   model.update(1 / 60, renderState(1))
 }
@@ -463,6 +465,7 @@ const mp = new Multiplayer({
   showScreen,
   courseLength: course.totalLength,
   getSelectedVehicle: () => vehicleId,
+  getSelectedRider: () => riderId,
   cb: {
     beginRace: () => startRace('multi'),
     raceEnded: endMultiRace,
@@ -484,6 +487,13 @@ const mp = new Multiplayer({
 garage = new Garage({
   vehicle: vehicleId,
   paint: paintIndex,
+  rider: riderId,
+  onRiderChange: (id) => {
+    riderId = cleanRider(id)
+    safeSet('skyrider-rider', riderId)
+    replaceModel()
+    if (mp.active && mp.net.phase === 'lobby') mp.riderChanged(riderId)
+  },
   bestFor: (id) => readBest(id),
   onChange: (id, paint) => {
     const changedVehicle = id !== vehicleId

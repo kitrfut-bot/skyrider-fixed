@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { createVehicleModel, KIND_LOOK } from './vehicleModels.js'
+import { cleanRider } from './riders.js'
 import { getVehicle } from './vehicles.js'
 
 const V3 = THREE.Vector3
@@ -129,13 +130,14 @@ export function disposeObject(root) {
 const _tmp = new V3()
 
 class Remote {
-  constructor(pid, name, veh, scene) {
+  constructor(pid, name, veh, rider, scene) {
     this.pid = pid
     this.name = name
     this.veh = veh
+    this.rider = cleanRider(rider)
     this.look = KIND_LOOK[getVehicle(veh).kind]
     this.scene = scene
-    this.model = createVehicleModel(veh, paletteFor(pid))
+    this.model = createVehicleModel(veh, paletteFor(pid), this.rider)
     this.model.root.visible = false
     scene.add(this.model.root)
     this.label = makeLabel(name, colorOf(pid))
@@ -193,11 +195,11 @@ export class Remotes {
       if (p.pid === localPid) continue
       want.add(p.pid)
       const have = this.map.get(p.pid)
-      if (have && (have.name !== p.name || have.veh !== (p.veh || 'road'))) {
+      if (have && (have.name !== p.name || have.veh !== (p.veh || 'road') || have.rider !== cleanRider(p.rider))) {
         have.dispose()
         this.map.delete(p.pid)
       }
-      if (!this.map.has(p.pid)) this.map.set(p.pid, new Remote(p.pid, p.name, p.veh || 'road', this.scene))
+      if (!this.map.has(p.pid)) this.map.set(p.pid, new Remote(p.pid, p.name, p.veh || 'road', p.rider, this.scene))
     }
     for (const pid of [...this.map.keys()]) if (!want.has(pid)) this.remove(pid)
   }

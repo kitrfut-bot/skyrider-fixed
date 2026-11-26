@@ -1,4 +1,5 @@
 import { VEHICLES, PAINTS, getVehicle, vehicleIcon } from './vehicles.js'
+import { RIDERS, cleanRider } from './riders.js'
 import { formatTime } from './hud.js'
 
 const $ = (id) => document.getElementById(id)
@@ -15,7 +16,9 @@ const STAT_LABELS = [
  * selected vehicle; main.js swaps the model whenever `onChange` fires.
  */
 export class Garage {
-  constructor({ vehicle, paint, bestFor, onChange }) {
+  constructor({ vehicle, paint, rider, bestFor, onChange, onRiderChange }) {
+    this.rider = cleanRider(rider)
+    this.onRiderChange = onRiderChange
     this.vehicle = vehicle
     this.paint = Math.max(0, Math.min(PAINTS.length - 1, Number(paint) || 0))
     this.bestFor = bestFor
@@ -30,6 +33,7 @@ export class Garage {
       stats: $('garage-stats'),
       paints: $('garage-paints'),
       note: $('garage-note'),
+      riders: $('garage-riders'),
     }
 
     this.tiles = VEHICLES.map((v) => {
@@ -57,7 +61,34 @@ export class Garage {
       return b
     })
     this.el.paints.addEventListener('keydown', (e) => this.keyNav(e, this.swatches, (i) => this.setPaint(i)))
+    this.riderTiles = RIDERS.map((r) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'rider-tile'
+      b.setAttribute('role', 'radio')
+      if (r.image) {
+        const img = document.createElement('img')
+        img.src = r.image
+        img.alt = ''
+        b.append(img)
+      }
+      const label = document.createElement('span')
+      label.textContent = r.name
+      b.append(label)
+      b.addEventListener('click', () => this.selectRider(r.id))
+      this.el.riders.append(b)
+      return b
+    })
+    this.el.riders.addEventListener('keydown', (e) => this.keyNav(e, this.riderTiles, (i) => this.selectRider(RIDERS[i].id)))
     this.render()
+  }
+
+  selectRider(id) {
+    id = cleanRider(id)
+    if (id === this.rider) return
+    this.rider = id
+    this.render()
+    this.onRiderChange(id)
   }
 
   keyNav(e, items, pick) {
@@ -128,6 +159,12 @@ export class Garage {
       s.setAttribute('aria-checked', String(on))
       s.tabIndex = on ? 0 : -1
       s.disabled = this.online
+    })
+    this.riderTiles.forEach((tile, i) => {
+      const on = RIDERS[i].id === this.rider
+      tile.classList.toggle('on', on)
+      tile.setAttribute('aria-checked', String(on))
+      tile.tabIndex = on ? 0 : -1
     })
     const best = this.bestFor(v.id)
     const bestText = best ? `Best solo time: ${formatTime(best)}` : 'No solo time with this vehicle yet'

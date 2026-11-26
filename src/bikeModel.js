@@ -154,7 +154,7 @@ const VARIANTS = {
 
 /** Low-poly bicycle (road, BMX or mountain bike) with an IK-driven rider that pedals, leans, crouches and stands. */
 export class BikeModel {
-  constructor(palette = null, variant = 'road') {
+  constructor(palette = null, variant = 'road', rider = null) {
     const PAL = palette ? { ...COLORS, ...palette } : COLORS
     const VA = (this.variant = VARIANTS[variant] || VARIANTS.road)
     this.wheelR = VA.wheelR
@@ -267,11 +267,11 @@ export class BikeModel {
 
     const mat = (color) => new THREE.MeshLambertMaterial({ color })
     const m = {
-      jersey: mat(PAL.jersey),
-      jerseyDark: mat(PAL.jerseyDark),
-      shorts: mat(COLORS.shorts),
-      skin: mat(COLORS.skin),
-      helmet: mat(PAL.helmet),
+      jersey: mat(rider?.jersey || PAL.jersey),
+      jerseyDark: mat(rider?.jerseyDark || PAL.jerseyDark),
+      shorts: mat(rider?.pants || COLORS.shorts),
+      skin: mat(rider?.skin || COLORS.skin),
+      helmet: mat(rider?.hair || PAL.helmet),
       shoe: mat(COLORS.shoe),
       dark: mat(COLORS.dark),
     }
@@ -288,6 +288,11 @@ export class BikeModel {
     }
     this.torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.155, 0.34, 3, 8), m.jersey)
     this.tilt.add(this.torso)
+    if (rider?.accent) {
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.36, 0.025), mat(rider.accent))
+      stripe.position.set(0, 0, 0.15)
+      this.torso.add(stripe)
+    }
     this.pelvis = ball(m.shorts, 0.15)
     this.head = ball(m.skin, 0.115)
     this.helmet = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), m.helmet)
@@ -296,12 +301,13 @@ export class BikeModel {
     this.visor = new THREE.Mesh(BOX, m.dark)
     this.visor.scale.set(0.2, 0.04, 0.06)
     this.tilt.add(this.visor)
+    this.visor.visible = !rider?.hair
 
     this.legs = [-1, 1].map((s) => ({
       s,
       thigh: limb(m.shorts),
-      shin: limb(m.skin),
-      knee: ball(m.skin, 0.058),
+      shin: limb(rider?.pants ? m.shorts : m.skin),
+      knee: ball(rider?.pants ? m.shorts : m.skin, 0.058),
       shoe: (() => {
         const mesh = new THREE.Mesh(BOX, m.shoe)
         mesh.scale.set(0.09, 0.07, 0.2)
@@ -312,9 +318,9 @@ export class BikeModel {
     this.arms = [-1, 1].map((s) => ({
       s,
       upper: limb(m.jerseyDark),
-      fore: limb(m.skin),
-      elbow: ball(m.skin, 0.045),
-      hand: ball(m.dark, 0.05),
+      fore: limb(rider?.sleeves ? m.jerseyDark : m.skin),
+      elbow: ball(rider?.sleeves ? m.jerseyDark : m.skin, 0.045),
+      hand: ball(rider?.skin ? m.skin : m.dark, 0.05),
       shoulder: ball(m.jersey, 0.075),
     }))
 
